@@ -26,16 +26,20 @@ CREATE TABLE Characters.Spieler(	SpielerID	INT	IDENTITY (1000,10),
 									CONSTRAINT PK_SpielerID PRIMARY KEY (SpielerId),
 									CONSTRAINT CK_Energie_Spieler CHECK (Energie >=0));
 
+DROP TABLE IF EXISTS Characters.NPC;
 CREATE TABLE Characters.NPC(		NPCID		INT	IDENTITY (10000,10),
 									[Name]		VARCHAR(50) NOT NULL,
 									OrtName		VARCHAR(50) NOT NULL,
 									RollenBez	VARCHAR(50) NOT NULL,
 									Kontostand	INT NOT NULL CONSTRAINT DF_Kontostand_NPC DEFAULT 10000,
-									CONSTRAINT	PK_NPCID PRIMARY KEY (NPCID));
+									CONSTRAINT	PK_NPCID PRIMARY KEY (NPCID),
+									CONSTRAINT UQ_NameOrt UNIQUE (Name, OrtName) );
 
+DROP TABLE IF EXISTS Characters.Rolle 
 CREATE TABLE Characters.Rolle(		Bezeichnung VARCHAR(50),
-									Schwaechen	CHAR(10),
-									Staerken	CHAR(10),
+									Angriff SMALLINT,
+									Verteidigung SMALLINT,
+									Handel SMALLINT,
 									CONSTRAINT PK_Rolle PRIMARY KEY (Bezeichnung));
 
 CREATE Table [Geography].Orte(		[Name] VARCHAR(50) CONSTRAINT PK_Orte PRIMARY KEY);
@@ -66,6 +70,35 @@ BEGIN
 	END --Ende While-Schleife
 END
 GO
+--Procedure zum erstellen der NPC
+CREATE OR ALTER PROCEDURE sp_InsertNPC @anzahlStädte INT, @anzahlNPC INT, @AnzahlSchurken INT
+AS
+BEGIN
+	DECLARE @st INT = 0;
+	--Das Verhältnis ist 1.5 Händler pro Schurke
+	DECLARE @AnzahlHändler INT = @AnzahlSchurken * 1.5;
+	-- Das Verhältnis ist 2 Questgeber pro Schurke
+	DECLARE @AnzahlQuestgeber INT = @AnzahlSchurken * 2;
+	WHILE @anzahlStädte <= @st
+	BEGIN
+		INSERT INTO Characters.NPC ([name], OrtName, RollenBez) 
+		VALUES (	( SELECT TOP 1 [namen] FROM Admin.Charaktere ORDER BY NEWID() ),
+					( SELECT TOP 1 [name] FROM Geography.Orte ORDER BY NEWID() ),
+					( SELECT TOP 1 Bezeichnung 
+						FROM Characters.Rolle 
+						WHERE Bezeichnung IN ('Questgeber','Schurke', 'Händler') ORDER BY NEWID()));
+		SET @st +=1;
+	END
+END
+
+--Erstellen der Rollen
+INSERT INTO Characters.Rolle (Bezeichnung,Angriff, Verteidigung, Handel) VALUES
+	('Verteidiger', -50,75,50),
+	('Angreifer', 100,-50,25),
+	('Unterstützer', 25, 25, 25),
+	('Händler', NULL, NULL, 75),
+	('Questgeber', NULL, NULL, NULL),
+	('Schurke', 150,0,NULL);
 
 --Insert für die Namen
 INSERT INTO [Admin].Charaktere (Namen) VALUES ('Adrastea');
